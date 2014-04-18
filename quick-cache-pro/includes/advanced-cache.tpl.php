@@ -72,6 +72,7 @@ namespace quick_cache // Root namespace.
 		if(!defined('QUICK_CACHE_HTMLC_COMPRESS_COMBINE_HEAD_BODY_CSS')) define('QUICK_CACHE_HTMLC_COMPRESS_COMBINE_HEAD_BODY_CSS', '%%QUICK_CACHE_HTMLC_COMPRESS_COMBINE_HEAD_BODY_CSS%%');
 		if(!defined('QUICK_CACHE_HTMLC_COMPRESS_COMBINE_HEAD_JS')) define('QUICK_CACHE_HTMLC_COMPRESS_COMBINE_HEAD_JS', '%%QUICK_CACHE_HTMLC_COMPRESS_COMBINE_HEAD_JS%%');
 		if(!defined('QUICK_CACHE_HTMLC_COMPRESS_COMBINE_FOOTER_JS')) define('QUICK_CACHE_HTMLC_COMPRESS_COMBINE_FOOTER_JS', '%%QUICK_CACHE_HTMLC_COMPRESS_COMBINE_FOOTER_JS%%');
+		if(!defined('QUICK_CACHE_HTMLC_COMPRESS_COMBINE_REMOTE_CSS_JS')) define('QUICK_CACHE_HTMLC_COMPRESS_COMBINE_REMOTE_CSS_JS', '%%QUICK_CACHE_HTMLC_COMPRESS_COMBINE_REMOTE_CSS_JS%%');
 		if(!defined('QUICK_CACHE_HTMLC_COMPRESS_INLINE_JS_CODE')) define('QUICK_CACHE_HTMLC_COMPRESS_INLINE_JS_CODE', '%%QUICK_CACHE_HTMLC_COMPRESS_INLINE_JS_CODE%%');
 		if(!defined('QUICK_CACHE_HTMLC_COMPRESS_CSS_CODE')) define('QUICK_CACHE_HTMLC_COMPRESS_CSS_CODE', '%%QUICK_CACHE_HTMLC_COMPRESS_CSS_CODE%%');
 		if(!defined('QUICK_CACHE_HTMLC_COMPRESS_JS_CODE')) define('QUICK_CACHE_HTMLC_COMPRESS_JS_CODE', '%%QUICK_CACHE_HTMLC_COMPRESS_JS_CODE%%');
@@ -415,7 +416,7 @@ namespace quick_cache // Root namespace.
 					if(!QUICK_CACHE_HTMLC_ENABLE || !class_exists('\\'.__NAMESPACE__.'\\plugin'))
 						return $cache; // Nothing to do here.
 
-					require_once dirname(plugin()->file).'/includes/html-compressor.phar';
+					require_once dirname(plugin()->file).'/includes/html-compressor/stub.php';
 
 					if(($host_dir_token = $this->host_dir_token(TRUE)) === '/')
 						$host_dir_token = ''; // Not necessary.
@@ -438,6 +439,7 @@ namespace quick_cache // Root namespace.
 						'compress_combine_head_body_css' => QUICK_CACHE_HTMLC_COMPRESS_COMBINE_HEAD_BODY_CSS,
 						'compress_combine_head_js'       => QUICK_CACHE_HTMLC_COMPRESS_COMBINE_HEAD_JS,
 						'compress_combine_footer_js'     => QUICK_CACHE_HTMLC_COMPRESS_COMBINE_FOOTER_JS,
+						'compress_combine_remote_css_js' => QUICK_CACHE_HTMLC_COMPRESS_COMBINE_REMOTE_CSS_JS,
 						'compress_inline_js_code'        => QUICK_CACHE_HTMLC_COMPRESS_INLINE_JS_CODE,
 						'compress_css_code'              => QUICK_CACHE_HTMLC_COMPRESS_CSS_CODE,
 						'compress_js_code'               => QUICK_CACHE_HTMLC_COMPRESS_JS_CODE,
