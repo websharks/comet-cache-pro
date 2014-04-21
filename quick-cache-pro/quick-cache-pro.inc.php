@@ -29,7 +29,6 @@ namespace quick_cache // Root namespace.
 							add_action('after_setup_theme', array($this, 'setup'));
 							register_activation_hook($this->file, array($this, 'activate'));
 							register_deactivation_hook($this->file, array($this, 'deactivate'));
-							add_filter('plugin_action_links_' . str_ireplace('.inc', '', plugin_basename(__FILE__)), array($this, 'add_settings_link'));
 						}
 
 					public function setup()
@@ -37,6 +36,9 @@ namespace quick_cache // Root namespace.
 							do_action('before__'.__METHOD__, get_defined_vars());
 
 							load_plugin_textdomain($this->text_domain);
+
+							$wp_content_dir_relative = // Considers custom `WP_CONTENT_DIR` locations.
+								rtrim(str_replace(ABSPATH, '', WP_CONTENT_DIR), '/'); // No trailing slash.
 
 							$this->default_options = array( // Default options.
 							                                'version'                              => $this->version,
@@ -50,9 +52,11 @@ namespace quick_cache // Root namespace.
 							                                'cache_clear_eval_code'                => '', // PHP code.
 							                                'cache_purge_home_page_enable'         => '1', // `0|1`.
 							                                'cache_purge_posts_page_enable'        => '1', // `0|1`.
+							                                'cache_purge_category_archive_enable'  => '1', // `0|1`.
+							                                'cache_purge_tag_archive_enable'       => '1', // `0|1`.
 							                                'allow_browser_cache'                  => '0', // `0|1`.
 
-							                                'cache_dir'                            => 'wp-content/cache', // Relative to `ABSPATH`.
+							                                'cache_dir'                            => $wp_content_dir_relative.'/cache',
 							                                'cache_max_age'                        => '7 days', // `strtotime()` compatible.
 
 							                                'when_logged_in'                       => '0', // `0|1|postload`.
@@ -72,8 +76,8 @@ namespace quick_cache // Root namespace.
 							                                'htmlc_js_exclusions'                  => '.php?', // Empty string or line-delimited patterns.
 
 							                                'htmlc_cache_expiration_time'          => '14 days', // `strtotime()` compatible.
-							                                'htmlc_cache_dir_public'               => 'wp-content/htmlc/cache/public', // Relative to `ABSPATH`.
-							                                'htmlc_cache_dir_private'              => 'wp-content/htmlc/cache/private', // Relative to `ABSPATH`.
+							                                'htmlc_cache_dir_public'               => $wp_content_dir_relative.'/htmlc/cache/public',
+							                                'htmlc_cache_dir_private'              => $wp_content_dir_relative.'/htmlc/cache/private',
 
 							                                'htmlc_compress_combine_head_body_css' => '1', // `0|1`.
 							                                'htmlc_compress_combine_head_js'       => '1', // `0|1`.
@@ -86,6 +90,11 @@ namespace quick_cache // Root namespace.
 
 							                                'change_notifications_enable'          => '1', // `0|1`.
 							                                'uninstall_on_deactivation'            => '0', // `0|1`.
+
+							                                'auto_cache_enable'                    => '0', // `0|1`.
+							                                'auto_cache_sitemap_url'               => 'sitemap.xml', // Relative to `site_url()`.
+							                                'auto_cache_other_urls'                => '', // A line-delimited list of any other URLs.
+							                                'auto_cache_user_agent'                => 'WordPress/'.get_bloginfo('version'),
 
 							                                'update_sync_username'                 => '', 'update_sync_password' => '',
 							                                'update_sync_version_check'            => '1', 'last_update_sync_version_check' => '0'
@@ -169,6 +178,9 @@ namespace quick_cache // Root namespace.
 							add_action('delete_post', array($this, 'auto_purge_post_cache'));
 							add_action('clean_post_cache', array($this, 'auto_purge_post_cache'));
 
+							add_action('added_term_relationship', array($this, 'auto_purge_tag_archive_cache'), 10, 2);
+							add_action('deleted_term_relationships', array($this, 'auto_purge_tag_archive_cache'), 10, 2);
+
 							add_action('trackback_post', array($this, 'auto_purge_comment_post_cache'));
 							add_action('pingback_post', array($this, 'auto_purge_comment_post_cache'));
 							add_action('comment_post', array($this, 'auto_purge_comment_post_cache'));
@@ -195,24 +207,30 @@ namespace quick_cache // Root namespace.
 
 							add_filter('pre_site_transient_update_plugins', array($this, 'pre_site_transient_update_plugins'));
 
+							add_filter('plugin_action_links_'.plugin_basename($this->file), array($this, 'add_settings_link'));
+
 							if($this->options['htmlc_enable']) // Mark `<!--footer-scripts-->` for HTML compressor.
 								{
 									add_action('wp_print_footer_scripts', array($this, 'htmlc_footer_scripts'), -PHP_INT_MAX);
 									add_action('wp_print_footer_scripts', array($this, 'htmlc_footer_scripts'), PHP_INT_MAX);
 								}
-							if((integer)$this->options['crons_setup'] < 1382523750)
+							add_filter('cron_schedules', array($this, 'extend_cron_schedules'));
+							if((integer)$this->options['crons_setup'] < 1398051975)
 								{
+									wp_clear_scheduled_hook('_cron_'.__NAMESPACE__.'_auto_cache');
 									wp_clear_scheduled_hook('_cron_'.__NAMESPACE__.'_cleanup');
 
 									wp_clear_scheduled_hook('ws_plugin__qcache_garbage_collector__schedule');
 									wp_clear_scheduled_hook('ws_plugin__qcache_auto_cache_engine__schedule');
 
+									wp_schedule_event(time() + 60, 'every15m', '_cron_'.__NAMESPACE__.'_auto_cache');
 									wp_schedule_event(time() + 60, 'daily', '_cron_'.__NAMESPACE__.'_cleanup');
 
 									$this->options['crons_setup'] = (string)time();
 									update_option(__NAMESPACE__.'_options', $this->options); // Blog-specific.
 									if(is_multisite()) update_site_option(__NAMESPACE__.'_options', $this->options);
 								}
+							add_action('_cron_'.__NAMESPACE__.'_auto_cache', array($this, 'auto_cache'));
 							add_action('_cron_'.__NAMESPACE__.'_cleanup', array($this, 'purge_cache'));
 
 							do_action('after__'.__METHOD__, get_defined_vars());
@@ -589,6 +607,30 @@ namespace quick_cache // Root namespace.
 							unset($_key, $_error, $_dismiss_css, $_dismiss); // Housekeeping.
 						}
 
+					public function auto_cache()
+						{
+							if(!$this->options['enable'])
+								return; // Nothing to do.
+
+							if(!$this->options['auto_cache_enable'])
+								return; // Nothing to do.
+
+							if(!$this->options['auto_cache_sitemap_url'])
+								if(!$this->options['auto_cache_other_urls'])
+									return; // Nothing to do.
+
+							require_once dirname(__FILE__).'/includes/auto-cache.php';
+							$auto_cache = new auto_cache();
+							$auto_cache->run();
+						}
+
+					public function extend_cron_schedules($schedules)
+						{
+							$schedules['every15m'] = array('interval' => 900, 'display' => __('Every 15 Minutes', $this->text_domain));
+
+							return apply_filters(__METHOD__, $schedules, get_defined_vars());
+						}
+
 					public function wipe_cache($manually = FALSE)
 						{
 							$counter = 0; // Initialize.
@@ -807,7 +849,8 @@ namespace quick_cache // Root namespace.
 							if(!is_dir($cache_dir)) return $counter; // Nothing to do.
 
 							$counter += $this->auto_purge_home_page_cache(); // If enabled and necessary.
-							$counter += $this->auto_purge_posts_page_cache(); // If enabled & applicable.
+							$counter += $this->auto_purge_posts_page_cache(); // If enabled and applicable.
+							$counter += $this->auto_purge_category_archive_cache(); // If enabled and applicable.
 
 							if(!($permalink = get_permalink($id))) return $counter; // Nothing we can do.
 
@@ -935,6 +978,160 @@ namespace quick_cache // Root namespace.
 									$_notices[] = '<img src="'.esc_attr($this->url('/client-s/images/clear.png')).'" style="float:left; margin:0 10px 0 0; border:0;" />'.
 									              __('<strong>Quick Cache:</strong> detected changes. Found cache file(s) for the designated "Posts Page" (auto-purging).', $this->text_domain);
 									update_option(__NAMESPACE__.'_notices', $_notices);
+								}
+							unset($_file, $_notices); // Just a little housekeeping.
+
+							return apply_filters(__METHOD__, $counter, get_defined_vars());
+						}
+
+					// @TODO need to update this to be intelligent like auto_purge_tag_archive_cache()
+					/*
+					 * @raamdev I suspect this method is not necessary. A term is also a category, which is one of the nice things about `term`-related hooks.
+					 *    While they often include MUCH more than you bargained for, they do cut down on the amount of code needed to deal with things like this.
+					 *
+					 *    You might consider renaming the routine for tags and instead referencing it with the word `terms`.
+					 *    I'll try to offer some suggestions down there as I work through this.
+					 */
+					public function auto_purge_category_archive_cache()
+						{
+							$counter = 0; // Initialize.
+
+							if(!$this->options['enable'])
+								return $counter; // Nothing to do.
+
+							if(!$this->options['cache_purge_category_archive_enable'])
+								return $counter; // Nothing to do.
+
+							$cache_dir = ABSPATH.$this->options['cache_dir'];
+							if(!is_dir($cache_dir)) return $counter; // Nothing to do.
+
+							$archive_base = get_option('category_base');
+
+							if($archive_base === '') // If no custom archive base is configured, we use the default
+								$archive_base = home_url('/category/');
+
+							$cache_path_no_scheme_quv_ext = $this->url_to_cache_path($archive_base, '', '', $this::CACHE_PATH_NO_SCHEME | $this::CACHE_PATH_NO_PATH_INDEX | $this::CACHE_PATH_NO_QUV | $this::CACHE_PATH_NO_EXT);
+							$regex                        = '/^'.preg_quote($cache_dir, '/'). // Consider all schemes; all path paginations; and all possible variations.
+							                                '\/[^\/]+\/'.preg_quote($cache_path_no_scheme_quv_ext, '/').
+							                                '(?:\/index)?(?:\.|\/[^\/]+[.\/])/';
+
+							/** @var $_file \RecursiveDirectoryIterator For IDEs. */
+							foreach($this->dir_regex_iteration($cache_dir, $regex) as $_file) if($_file->isFile() || $_file->isLink())
+								{
+									if(strpos($_file->getSubpathname(), '/') === FALSE) continue;
+									// Don't delete files in the immediate directory; e.g. `qc-advanced-cache` or `.htaccess`, etc.
+									// Actual `http|https/...` cache files are nested. Files in the immediate directory are for other purposes.
+
+									if(!unlink($_file->getPathname())) // Throw exception if unable to delete.
+										throw new \exception(sprintf(__('Unable to auto-purge file: `%1$s`.', $this->text_domain), $_file->getPathname()));
+									$counter++; // Increment counter for each file purge.
+
+									if(!empty($_notices) || !$this->options['change_notifications_enable'] || !is_admin())
+										continue; // Stop here; we already issued a notice, or this notice is N/A.
+
+									$_notices   = (is_array($_notices = get_option(__NAMESPACE__.'_notices'))) ? $_notices : array();
+									$_notices[] = '<img src="'.esc_attr($this->url('/client-s/images/clear.png')).'" style="float:left; margin:0 10px 0 0; border:0;" />'.
+									              __('<strong>Quick Cache:</strong> detected changes. Found cache file(s) for the designated "Category Archive" (auto-purging).', $this->text_domain);
+									update_option(__NAMESPACE__.'_notices', $_notices);
+								}
+							unset($_file, $_notices); // Just a little housekeeping.
+
+							return apply_filters(__METHOD__, $counter, get_defined_vars());
+						}
+
+					/*
+					 * See also: wp_remove_object_terms() in wp-includes/taxonomy.php
+					 * See also: wp_set_object_terms() in wp-includes/taxonomy.php
+					 *
+					 *   @raamdev I tested this and it seems to work just fine!
+					 *    I made a few suggestions/observations below; and via HipChat too.
+					 */
+					public function auto_purge_tag_archive_cache($object_id, $tt_ids)
+						{
+							$counter        = 0; // Initialize
+							$terms_to_purge = array(); // Initialize
+
+							if(defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)
+								return $counter; // Nothing to do.
+
+							/* @raamdev I would suggest `===` here to avoid a 0 == 0 scenario by mistake. */
+							/* @raamdev I would knock this check down below your other `enable` checks below.
+							 *    If you do those simple checks first, you might be able to avoid a DB query here.
+							 *    i.e. check directories, flags and anything else you can first; trying to avoid DB interaction if possible.
+							 *    You might also check if `$object_id` and/or `$tt_ids` is empty before this check as well. */
+							if(get_post_status($object_id) == 'auto-draft')
+								return $counter; // Nothing to do.
+
+							// @TODO Add option to UI to disable clearing tag cache when saving as Draft
+							// By default, clearing the tag cache when saving as Draft is enabled because
+							// the post might be going from Published -> Draft, in which case the Tag
+							// archive cache should be updated. Some site-owners might want to disable
+							// this behavior.       @raamdev... I think what you have is fine, but I see what you mean!
+
+							if(!$this->options['enable'])
+								return $counter; // Nothing to do.
+
+							if(!$this->options['cache_purge_tag_archive_enable'])
+								return $counter; // Nothing to do.
+
+							$cache_dir = ABSPATH.$this->options['cache_dir'];
+							if(!is_dir($cache_dir)) return $counter; // Nothing to do.
+
+							if(is_array($tt_ids))
+								{
+									foreach($tt_ids as $term_taxonomy_id)
+										{
+											/* @raamdev This call to `get_term_by()` might return a FALSE value. */
+											$terms_to_purge[] = get_term_by('term_taxonomy_id', (integer)$term_taxonomy_id, 'post_tag', OBJECT);
+										}
+								}
+							else
+								{
+									/* @raamdev This call to `get_term_by()` might return a FALSE value. */
+									$terms_to_purge[] = get_term_by('term_taxonomy_id', (integer)$tt_ids, 'post_tag', OBJECT);
+								}
+							/* @raamdev Don't forget to `unset($term_taxonomy_id);` here to help yourself avoid a conflict later in your code.
+							 *    You might have noticed that when I use temp vars like this in an iteration I usually give them a temp prefix
+							 *    like `$_term_taxonomy_id`; just so it's easier for me to remember that I should unset after iteration.
+							 *    That's just something that I do to help me remember. It's not really a rule or anything. */
+
+							if(empty($terms_to_purge)) return $counter; // Nothing to do.
+
+							foreach($terms_to_purge as $term)
+								{
+									/* @raamdev The `$term` variable might be FALSE here.
+									 *    That could (in and of itself) result in `get_tag_link()` being FALSE also.
+									 *    Well, if you avoid the `$term_id` being empty here, I'd still double-check the `$term_permalink`
+									 *    value after calling `get_tag_link()`; just to be extra sure before proceeding beyond this point. */
+
+									/* @raamdev You might also consider looking at @{link \get_term_link()} and {@link \get_term_feed_link()} to see if those might help here.
+									 *    Using those it might be easily possible to consider more than just tags in this routine. */
+									$term_permalink = get_tag_link($term->term_id);
+
+									$cache_path_no_scheme_quv_ext = $this->url_to_cache_path($term_permalink, '', '', $this::CACHE_PATH_NO_SCHEME | $this::CACHE_PATH_NO_PATH_INDEX | $this::CACHE_PATH_NO_QUV | $this::CACHE_PATH_NO_EXT);
+									$regex                        = '/^'.preg_quote($cache_dir, '/'). // Consider all schemes; all path paginations; and all possible variations.
+									                                '\/[^\/]+\/'.preg_quote($cache_path_no_scheme_quv_ext, '/').
+									                                '(?:\/index)?(?:\.|\/(?:page|comment\-page)\/[0-9]+[.\/])/';
+
+									/** @var $_file \RecursiveDirectoryIterator For IDEs. */
+									foreach($this->dir_regex_iteration($cache_dir, $regex) as $_file) if($_file->isFile() || $_file->isLink())
+										{
+											if(strpos($_file->getSubpathname(), '/') === FALSE) continue;
+											// Don't delete files in the immediate directory; e.g. `qc-advanced-cache` or `.htaccess`, etc.
+											// Actual `http|https/...` cache files are nested. Files in the immediate directory are for other purposes.
+
+											if(!unlink($_file->getPathname())) // Throw exception if unable to delete.
+												throw new \exception(sprintf(__('Unable to auto-purge file: `%1$s`.', $this->text_domain), $_file->getPathname()));
+											$counter++; // Increment counter for each file purge.
+
+											if(!empty($_notices) || !$this->options['change_notifications_enable'] || !is_admin())
+												continue; // Stop here; we already issued a notice, or this notice is N/A.
+
+											$_notices   = (is_array($_notices = get_option(__NAMESPACE__.'_notices'))) ? $_notices : array();
+											$_notices[] = '<img src="'.esc_attr($this->url('/client-s/images/clear.png')).'" style="float:left; margin:0 10px 0 0; border:0;" />'.
+											              sprintf(__('<strong>Quick Cache:</strong> detected changes. Found cache files for Tag: <code>%1$s</code> (auto-purging).', $this->text_domain), $term->name);
+											update_option(__NAMESPACE__.'_notices', $_notices);
+										}
 								}
 							unset($_file, $_notices); // Just a little housekeeping.
 
@@ -1218,7 +1415,7 @@ namespace quick_cache // Root namespace.
 							if(!is_file($advanced_cache_file)) return TRUE; // Already gone.
 
 							if(is_readable($advanced_cache_file) && filesize($advanced_cache_file) === 0)
-								return TRUE; // Already gone; e.g. it's empty already.
+								return TRUE; // Already gone; i.e. it's empty already.
 
 							if(!is_writable($advanced_cache_file)) return FALSE; // Not possible.
 
@@ -1301,10 +1498,12 @@ namespace quick_cache // Root namespace.
 							return $value; // Pass through untouched (always).
 						}
 
-					public function add_settings_link( $links ) {
-						$links[] = '<a href="options-general.php?page=quick_cache">Settings</a>';
-						return $links;
-					}
+					public function add_settings_link($links)
+						{
+							$links[] = '<a href="options-general.php?page='.urlencode(__NAMESPACE__).'">'.__('Settings', $this->text_domain).'</a>';
+
+							return apply_filters(__METHOD__, $links, get_defined_vars());
+						}
 
 					/*
 					 * See also: `advanced-cache.tpl.php` duplicate.
@@ -1377,12 +1576,22 @@ namespace quick_cache // Root namespace.
 
 					public function host_token($dashify = FALSE)
 						{
-							$host = strtolower($_SERVER['HTTP_HOST']);
-							return ($dashify) ? trim(preg_replace('/[^a-z0-9\/]/i', '-', $host), '-') : $host;
+							$dashify = (integer)$dashify;
+							static $tokens = array(); // Static cache.
+							if(isset($tokens[$dashify])) return $tokens[$dashify];
+
+							$host        = strtolower($_SERVER['HTTP_HOST']);
+							$token_value = ($dashify) ? trim(preg_replace('/[^a-z0-9\/]/i', '-', $host), '-') : $host;
+
+							return ($tokens[$dashify] = $token_value);
 						}
 
 					public function host_dir_token($dashify = FALSE)
 						{
+							$dashify = (integer)$dashify;
+							static $tokens = array(); // Static cache.
+							if(isset($tokens[$dashify])) return $tokens[$dashify];
+
 							$cache_dir      = ABSPATH.$this->options['cache_dir'];
 							$host_dir_token = '/'; // Assume NOT multisite; or running it's own domain.
 
@@ -1404,7 +1613,9 @@ namespace quick_cache // Root namespace.
 									       || !in_array($host_dir_token, unserialize(file_get_contents($cache_dir.'/qc-blog-paths')), TRUE))
 									) $host_dir_token = '/'; // Main site; e.g. this is NOT a real/valid child blog path.
 								}
-							return ($dashify) ? trim(preg_replace('/[^a-z0-9\/]/i', '-', $host_dir_token), '-') : $host_dir_token;
+							$token_value = ($dashify) ? trim(preg_replace('/[^a-z0-9\/]/i', '-', $host_dir_token), '-') : $host_dir_token;
+
+							return ($tokens[$dashify] = $token_value);
 						}
 
 					public function dir_regex_iteration($dir, $regex)
