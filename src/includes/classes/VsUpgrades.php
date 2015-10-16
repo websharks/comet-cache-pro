@@ -45,6 +45,7 @@ class VsUpgrades extends AbsBase
         $this->fromLt141009();
         $this->fromQuickCache();
         $this->fromLte150807();
+        $this->fromLte151006();
     }
 
     /**
@@ -274,6 +275,36 @@ class VsUpgrades extends AbsBase
             //    $this->plugin->options['cdn_blacklisted_extensions'] = $this->plugin->default_options['cdn_blacklisted_extensions'];
             //    $this->plugin->updateOptions($this->plugin->options); // Save/update options.
             //}
+        }
+    }
+    /**
+     * Before we changed the way exclusion patterns work.
+     *
+     * @since 15xxxx Enhancing exclusion patterns.
+     */
+    protected function fromLte151006()
+    {
+        if (version_compare($this->prev_version, '150807', '<=')) {
+            if (is_array($existing_options = get_site_option(GLOBAL_NS.'_options'))) {
+                if (!empty($existing_options['exclude_uris'])) {
+                    $this->plugin->options['exclude_uris'] = str_replace('*', '**', $existing_options['exclude_uris']);
+                }
+                if (!empty($existing_options['exclude_refs'])) {
+                    $this->plugin->options['exclude_refs'] = str_replace('*', '**', $existing_options['exclude_refs']);
+                }
+                if (!empty($existing_options['exclude_agents'])) {
+                    $this->plugin->options['exclude_agents'] = str_replace('*', '**', $existing_options['exclude_agents']);
+                }
+                if (!empty($existing_options['htmlc_css_exclusions'])) {
+                    $this->plugin->options['htmlc_css_exclusions'] = str_replace('*', '**', $existing_options['htmlc_css_exclusions']);
+                }
+                if (!empty($existing_options['htmlc_js_exclusions'])) {
+                    $this->plugin->options['htmlc_js_exclusions'] = str_replace('*', '**', $existing_options['htmlc_js_exclusions']);
+                }
+                if ($this->plugin->options !== $existing_options) {
+                    $this->plugin->updateOptions($this->plugin->options); // Save/update options.
+                }
+            }
         }
     }
 }
