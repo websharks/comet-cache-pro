@@ -1,0 +1,49 @@
+# Serve the cache w/o touching PHP.
+<IfModule rewrite_module>
+  # For text/HTML files.
+  AddDefaultCharset UTF-8
+
+  # Rewrites on.
+  RewriteEngine on
+  RewriteBase /
+
+  # Stop on direct hits.
+  RewriteRule ^index\.php$ - [L]
+
+  # Stop on direct hits.
+  RewriteCond %{ENV:WP_CACHE_HIT} ="yes" [NC,OR]
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+    RewriteCond %{REQUEST_URI} !^/$
+      RewriteRule ^ - [L]
+
+  # Initialize `WP_CACHE_PATH`.
+  RewriteCond %{ENV:WP_CACHE_PATH} =""
+    RewriteCond %{HTTPS} !^on$ [NC,OR]
+    RewriteCond %{HTTPS}s ^on(s)$ [NC]
+      RewriteRule ^ - [E=WP_CACHE_PATH:http%1/%{HTTP_HOST}%{REQUEST_URI}]
+
+  # Recursively dashify the cache path; note the [N] flag.
+  RewriteCond %{ENV:WP_CACHE_PATH} (.*?)[^a-z0-9/\-](.*)
+    RewriteRule ^ - [E=WP_CACHE_PATH:%1-%2,N]
+
+  # Strip trailing slashes from cache path.
+  RewriteCond %{ENV:WP_CACHE_PATH} (.*?)/+$
+    RewriteRule ^ - [E=WP_CACHE_PATH:%1]
+
+  # Append `/index` whenever the path is empty.
+  RewriteCond %{ENV:WP_CACHE_PATH} ^(https?/[^/]+)$
+    RewriteRule ^ - [E=WP_CACHE_PATH:%1/index]
+
+  # Append `.html` extension to the cache path.
+  RewriteCond %{ENV:WP_CACHE_PATH} (.*)
+    RewriteRule ^ - [E=WP_CACHE_PATH:%1.html]
+
+  # Serve cache if feasible/possible.
+  RewriteCond %{REQUEST_METHOD}%{QUERY_STRING} ="GET" [NC]
+  RewriteCond %{HTTP_COOKIE} !(?:wordpress_logged_in_|wp\-postpass_|comment_author_|wptouch_switch_toggle)
+  RewriteCond %{HTTP_REFERER} !"%%exclude_refs%%" [NC]
+  RewriteCond %{HTTP_USER_AGENT} !"%%exclude_agents%%" [NC]
+  RewriteCond "%%cache_dir%%/%{ENV:WP_CACHE_PATH}" -f
+    RewriteRule ^ "%%cache_dir%%/%{ENV:WP_CACHE_PATH}" [E=WP_CACHE_HIT:yes,L]
+</IfModule>

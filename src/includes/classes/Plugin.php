@@ -221,7 +221,10 @@ class Plugin extends AbsBaseAp
             'auto_cache_sitemap_url',
             'auto_cache_ms_children_too',
             'auto_cache_other_urls',
+            'auto_cache_permalinks',
+            'auto_cache_archives',
             'auto_cache_user_agent',
+            'auto_cache_state',
 
             'cdn_enable',
             'cdn_host',
@@ -270,6 +273,10 @@ class Plugin extends AbsBaseAp
 
             'debugging_enable' => '1',
             // `0|1|2` // 2 indicates greater debugging detail.
+
+            /* Related to the current mode. */
+
+            'mode' => 'php', // `simple|php|apache|ningx`
 
             /* Related to cache directory. */
 
@@ -328,6 +335,13 @@ class Plugin extends AbsBaseAp
 
             'version_salt' => '', // Any string value.
 
+            /* Related to `.htaccess` tweaks. */
+
+            'htaccess_etags_enable'   => '0', // `0|1`.
+            'htaccess_expires_enable' => '0', // `0|1`.
+            'htaccess_gzip_enable'    => '0', // `0|1`.
+            'htaccess_cache_enable'   => '0', // `0|1`.
+
             /* Related to HTML compressor. */
 
             'htmlc_enable'                => '0', // Enable HTML compression?
@@ -352,7 +366,10 @@ class Plugin extends AbsBaseAp
             'auto_cache_sitemap_url'     => 'sitemap.xml', // Relative to `site_url()`.
             'auto_cache_ms_children_too' => '0', // `0|1`. Try child blogs too?
             'auto_cache_other_urls'      => '', // A line-delimited list of any other URLs.
-            'auto_cache_user_agent'      => 'WordPress',
+            'auto_cache_permalinks'      => '1', // `0|1`; auto-cache known Post/Page permalinks?
+            'auto_cache_archives'        => '1', // `0|1`; auto-cache known archive views?
+            'auto_cache_state'           => '', // Serialized array; for internal use only.
+            'auto_cache_user_agent'      => 'WordPress', // User-Agent header.
 
             /* Related to CDN functionality. */
 

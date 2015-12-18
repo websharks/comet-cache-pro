@@ -43,11 +43,6 @@ class AutoCache extends AbsBase
         if (!$this->plugin->options['auto_cache_enable']) {
             return; // Nothing to do.
         }
-        if (!$this->plugin->options['auto_cache_sitemap_url']) {
-            if (!$this->plugin->options['auto_cache_other_urls']) {
-                return; // Nothing to do.
-            }
-        }
         $cache_dir = $this->plugin->cacheDir();
         if (!is_dir($cache_dir) || !is_writable($cache_dir)) {
             return; // Not possible in this case.
@@ -258,7 +253,6 @@ class AutoCache extends AbsBase
         if (!$this->plugin->autoCacheCheckXmlSitemap($sitemap, $___recursive, $this->is_child_blog)) {
             goto finale; // Nothing we can do.
         }
-
         if ($xml_reader->open($sitemap)) {
             while ($xml_reader->read()) {
                 if ($xml_reader->nodeType === $xml_reader::ELEMENT) {
@@ -358,6 +352,54 @@ class AutoCache extends AbsBase
             }
             return $urls; // All sitemap URLs from this `<urlset>` node.
         }
+    }
+
+    /**
+     * For internal use only.
+     *
+     * @since 15xxxx Sonic boom.
+     *
+     * @return array All known permalink URLs.
+     */
+    protected function getKnownPermalinkUrls()
+    {
+        // @TODO
+    }
+
+    /**
+     * For internal use only.
+     *
+     * @since 15xxxx Sonic boom.
+     *
+     * @return array All known archive URLs.
+     */
+    protected function getKnownArchiveUrls()
+    {
+        // @TODO
+    }
+
+    /**
+     * For internal use only.
+     *
+     * @since 15xxxx Sonic boom.
+     *
+     * @return array Current state.
+     */
+    protected function getState()
+    {
+        // @TODO
+    }
+
+    /**
+     * For internal use only.
+     *
+     * @since 15xxxx Sonic boom.
+     *
+     * @param array $state Current state.
+     */
+    protected function setState()
+    {
+        // @TODO
     }
 }
 /*[/pro]*/
