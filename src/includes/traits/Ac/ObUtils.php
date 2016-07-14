@@ -219,9 +219,11 @@ trait ObUtils
 
             if (COMET_CACHE_DEBUGGING_ENABLE && $this->isHtmlXmlDoc($cache)) {
                 $total_time = number_format(microtime(true) - $this->timer, 5, '.', '');
-                $cache .= "\n".'<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->';
+                $cache .= "\n".'<!-- ';
                 // translators: This string is actually NOT translatable because the `__()` function is not available at this point in the processing.
-                $cache .= "\n".'<!-- '.htmlspecialchars(sprintf(__('%1$s fully functional :-) Cache file served for (%2$s) in %3$s seconds, on: %4$s.', SLUG_TD), NAME, $this->salt_location, $total_time, date('M jS, Y @ g:i a T'))).' -->';
+                $cache .= "\n".htmlspecialchars(sprintf(__('%1$s fully functional. :-)', SLUG_TD), NAME, $this->salt_location, $total_time, date('M jS, Y @ g:i a T')));
+                $cache .= "\n".htmlspecialchars(sprintf(__('This page was loaded via the cache in %3$s seconds.', SLUG_TD), NAME, $this->salt_location, $total_time, date('M jS, Y @ g:i a T')));
+                $cache .= "\n";
             }
             exit($cache); // Exit with cache contents.
         } else {
@@ -346,9 +348,14 @@ trait ObUtils
         if (COMET_CACHE_DEBUGGING_ENABLE && $this->isHtmlXmlDoc($cache)) {
             $total_time = number_format(microtime(true) - $this->timer, 5, '.', ''); // Based on the original timer.
             $via = IS_PRO && $this->isAutoCacheEngine() ? __('Auto-Cache Engine', SLUG_TD) : __('HTTP request', SLUG_TD);
-            $cache .= "\n".'<!-- '.htmlspecialchars(sprintf(__('%1$s file path: %2$s', SLUG_TD), NAME, str_replace(WP_CONTENT_DIR, '', $this->is_404 ? $this->cache_file_404 : $this->cache_file))).' -->';
-            $cache .= "\n".'<!-- '.htmlspecialchars(sprintf(__('%1$s file built for (%2$s%3$s) in %4$s seconds, on: %5$s; via %6$s.', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T'), $via)).' -->';
-            $cache .= "\n".'<!-- '.htmlspecialchars(sprintf(__('This %1$s file will auto-expire (and be rebuilt) on: %2$s (based on your configured expiration time).', SLUG_TD), NAME, date('M jS, Y @ g:i a T', strtotime('+'.COMET_CACHE_MAX_AGE)))).' -->';
+            $cache .= "\n".'++++++++++++++++'.htmlspecialchars(sprintf(__('Cache File Information and Statistics', SLUG_TD), NAME, str_replace(WP_CONTENT_DIR, '', $this->is_404 ? $this->cache_file_404 : $this->cache_file))).'++++++++++++++++++++++++++++++++++';
+            $cache .= "\n".htmlspecialchars(sprintf(__('File path: \t10s %2$s', SLUG_TD), NAME, str_replace(WP_CONTENT_DIR, '', $this->is_404 ? $this->cache_file_404 : $this->cache_file)));
+            $cache .= "\n".htmlspecialchars(sprintf(__('Page URL: \t10s %2$s%3$s', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T')));
+            $cache .= "\n".htmlspecialchars(sprintf(__('Date generated: \t10s %5$s', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T')));
+            $cache .= "\n".htmlspecialchars(sprintf(__('Expiration date: \t10s %2$s (based on your configured expiration time)', SLUG_TD), NAME, date('M jS, Y @ g:i a T', strtotime('+'.COMET_CACHE_MAX_AGE))));
+            $cache .= "\n".htmlspecialchars(sprintf(__('Time to generate this cache file: %4$s seconds', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T')));
+            $cache .= "\n".htmlspecialchars(sprintf(__('Generated via: \t10s %6$s', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T'), $via));
+            $cache .= "\n".' -->';
         }
         if ($this->is_404) {
             if (file_put_contents($cache_file_tmp, serialize($this->cacheableHeadersList()).'<!--headers-->'.$cache) && rename($cache_file_tmp, $this->cache_file_404)) {
