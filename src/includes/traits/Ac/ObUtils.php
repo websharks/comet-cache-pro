@@ -352,15 +352,15 @@ trait ObUtils
             $cache .= $notes;
 
             $notes = []; // Initialize array.
-            $notes['Cache File Information and Statistics'] = "\n".'++++++++++++++++'.htmlspecialchars(sprintf(__(' ', SLUG_TD), NAME, str_replace(WP_CONTENT_DIR, '', $this->is_404 ? $this->cache_file_404 : $this->cache_file)));
-            $notes['File Path'] = "\n".htmlspecialchars(sprintf(__('%2$s', SLUG_TD), NAME, str_replace(WP_CONTENT_DIR, '', $this->is_404 ? $this->cache_file_404 : $this->cache_file)));
-            $notes['Page URL']  = "\n".htmlspecialchars(sprintf(__('%2$s%3$s', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T')));
-            $notes['Date generated'] = "\n".htmlspecialchars(sprintf(__('%5$s', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T')));
-            $notes['Expiration date'] = "\n".htmlspecialchars(sprintf(__('%2$s (based on your configured expiration time)', SLUG_TD), NAME, date('M jS, Y @ g:i a T', strtotime('+'.COMET_CACHE_MAX_AGE))));
-            $notes['Time to generate this cache file:'] = "\n".htmlspecialchars(sprintf(__('%4$s seconds', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T')));
-            $notes['Generated via'] = "\n".htmlspecialchars(sprintf(__('%6$s', SLUG_TD), NAME, $this->is_404 ? '404 [error document]' : $this->salt_location, (IS_PRO && COMET_CACHE_WHEN_LOGGED_IN && $this->user_token ? '; '.sprintf(__('user token: %1$s', SLUG_TD), $this->user_token) : ''), $total_time, date('M jS, Y @ g:i a T'), $via));
+            $notes['Cache File Information And Statistics'] = '++++++++++++++++ ';
+            $notes['File Path'] = '%2$s';
+            $notes['Page URL']  = '%2$s%3$s';
+            $notes['Date Generated'] = '%5$s';
+            $notes['Expiration Date'] = '%2$s (Based On Your Configured Expiration Time)';
+            $notes['Time To Generate This Cache File'] = '%4$s seconds';
+            $notes['Generated Via'] = '%6$s';
 
-             $cache .= "\n".' -->';
+            $cache .= "\n".' -->';
 
             $longest_heading_size = 0; // Initialize.
 
