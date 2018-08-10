@@ -41,11 +41,6 @@
     "browscap/browscap-php": "3.0.0",
     "ramsey/uuid": "3.*"
   },
-  "require-lite": {
-    "php": ">=5.4",
-    "websharks/sharkicons": "160221",
-    "websharks/wp-php-rv": "160824.6416"
-  },
   "require-dev": {
     "package/bourbon": "4.2.3",
     "websharks/wp-i18n-tools": "dev-master"
