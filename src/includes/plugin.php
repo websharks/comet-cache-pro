@@ -12,7 +12,7 @@ if (!defined('WPINC')) {
     exit('Do NOT access this file directly.');
 }
 require_once __DIR__.'/stub.php';
-
+require_once __DIR__.'/wp-cli.php';
 if (!Classes\Conflicts::check()) {
     $GLOBALS[GLOBAL_NS]     = new Classes\Plugin();
     $GLOBALS['zencache']    = $GLOBALS[GLOBAL_NS]; // Back compat.
